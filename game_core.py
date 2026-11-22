@@ -555,7 +555,7 @@ def new_state(seed: int = WORLD_SEED) -> dict:
         "tools": {"топор": False, "копьё": False},
         "fires": [], "wolves": [], "pickups": [],
         "time": DAY_LEN * 0.25, "days": 1, "attack_cd": 0.0,
-        "messages": [], "craft_open": False, "dead": False,
+        "messages": [], "craft_open": False, "dead": False, "paused": False,
         "spawn_pending": 3.0, "started": False, "show_help": False,
         "cold": False, "was_night": False,
     }
