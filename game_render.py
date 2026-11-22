@@ -209,7 +209,7 @@ class Renderer:
                 ibo = self.ctx.buffer(idx.tobytes())
                 vao = self.ctx.vertex_array(
                     self.prog, [(vbo, "3f 3f 3f", "in_pos", "in_normal", "in_color")],
-                    index_buffer=ibo, index_element_type=mgl.GL_UNSIGNED_INT)
+                    index_buffer=ibo, index_element_size=4)
                 self.chunk_terrain[(cx, cz)] = (vao, vbo, ibo)
                 self.rebuild_props_gpu((cx, cz), st["chunks"][(cx, cz)]["props"])
 
