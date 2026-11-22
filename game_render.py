@@ -20,7 +20,7 @@ from game_core import (
 
 
 def write_mat(prog, name, m: np.ndarray):
-    u = prog.get(name)
+    u = prog.get(name, None)
     if u is not None:
         u.write(np.ascontiguousarray(m.T, dtype="f4").tobytes())
 
