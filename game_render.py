@@ -407,9 +407,9 @@ class Renderer:
     def bar(self, x, y, label, frac, col):
         frac = float(np.clip(frac, 0.0, 1.0))
         self.text(x, y, label, (1, 1, 1, 0.92))
-        self.rect(x + 130, y + 3, 170, 12, (0, 0, 0, 0.55))
+        self.rect(x + 205, y + 3, 170, 12, (0, 0, 0, 0.55))
         if frac > 0.005:
-            self.rect(x + 132, y + 5, 166 * frac, 8, (*col, 0.95))
+            self.rect(x + 207, y + 5, 166 * frac, 8, (*col, 0.95))
 
     def draw_hud(self, st: dict, sun: dict, fps: float):
         cfg = [

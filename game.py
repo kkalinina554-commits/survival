@@ -52,6 +52,7 @@ def run() -> int:
 
     last = glfw.get_time()
     fps_acc = fps_n = fps_show = 0.0
+    slow_warned = False
     last_mouse = None
 
     while not glfw.window_should_close(window):
@@ -98,6 +99,7 @@ def run() -> int:
         elif not st["started"]:
             if edges[glfw.KEY_SPACE]:
                 st["started"] = True
+                print("СТАРТ ИГРЫ. Если персонаж всё ещё стоит на месте - кликни мышкой по окну игры и жми W.")
         else:
             if edges[glfw.KEY_C] and not st["paused"]:
                 st["craft_open"] = not st["craft_open"]
@@ -150,6 +152,9 @@ def run() -> int:
         fps_n += 1
         if fps_acc >= 0.5:
             fps_show = fps_n / fps_acc
+            if not slow_warned and fps_show > 0 and fps_show < 15:
+                slow_warned = True
+                print(f"Низкий FPS ({fps_show:.0f}). Если картинка дёргается или замирала - напиши мне.")
             fps_acc, fps_n = 0.0, 0
 
         for k in keys_list:
