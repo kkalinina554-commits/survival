@@ -1,0 +1,3 @@
+numpy>=1.24
+glfw>=2.5
+moderngl>=5.10
