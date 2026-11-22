@@ -20,7 +20,9 @@ from game_core import (
 
 
 def write_mat(prog, name, m: np.ndarray):
-    prog[name].write(np.ascontiguousarray(m.T, dtype="f4").tobytes())
+    u = prog.get(name)
+    if u is not None:
+        u.write(np.ascontiguousarray(m.T, dtype="f4").tobytes())
 
 
 SKY_VS = """
@@ -81,9 +83,9 @@ TERRAIN_FS = """
 #version 330
 uniform sampler2D u_atlas;
 uniform vec2 u_tf;
-uniform vec3 u_off_grass;
-uniform vec3 u_off_rock;
-uniform vec3 u_off_sand;
+uniform vec2 u_off_grass;
+uniform vec2 u_off_rock;
+uniform vec2 u_off_sand;
 uniform vec3 u_sun_dir;
 uniform vec3 u_light;
 uniform float u_amb;
@@ -411,9 +413,9 @@ class Renderer:
         prog["u_atlas"].value = 0
         tf = (1.0 / ATLAS_COLS, 1.0 / ATLAS_ROWS)
         prog["u_tf"].value = tf
-        prog["u_off_grass"].value = atlas_tile_uv(T_GRASS) + (0.0,)
-        prog["u_off_rock"].value = atlas_tile_uv(T_ROCK) + (0.0,)
-        prog["u_off_sand"].value = atlas_tile_uv(T_SAND) + (0.0,)
+        prog["u_off_grass"].value = atlas_tile_uv(T_GRASS)
+        prog["u_off_rock"].value = atlas_tile_uv(T_ROCK)
+        prog["u_off_sand"].value = atlas_tile_uv(T_SAND)
         prog["u_sun_dir"].value = tuple(sun["sun_dir"])
         prog["u_light"].value = tuple(sun["light"])
         prog["u_amb"].value = sun["amb"]
