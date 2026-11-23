@@ -464,17 +464,26 @@ def _leg_part(r0: float, r1: float, length: float, tile: int) -> tuple[np.ndarra
 
 def wolf_model() -> tuple[np.ndarray, np.ndarray, list, list]:
     def build():
-        body = _sphere_part(1.0, 1.0, 0.0, 0.0, 0.0, T_FUR)
-        body = (_xform9(body[0], np.array([[0.52, 0, 0, 0], [0, 0.44, 0, 0.62], [0, 0, 0.8, 0.12]])), body[1])
-        snout = _tube(0.13, 0.07, 0.26, radial=6, rings=2, tile=T_FUR)
-        snout = (_xform9(snout[0], _mul3(_move(0.0, 0.7, 0.78), _rot_x(np.pi / 2.0 - 0.25))), snout[1])
-        ear_l = _sphere_part(0.09, 1.4, 0.13, 1.02, 0.6, T_FUR, subdiv=0)
-        ear_r = _sphere_part(0.09, 1.4, -0.13, 1.02, 0.6, T_FUR, subdiv=0)
-        tail = _sphere_part(0.14, 1.0, 0.0, 0.66, -0.82, T_FUR, subdiv=0, sx=0.7)
-        head = _sphere_part(0.24, 0.85, 0.0, 0.72, 0.6, T_FUR, subdiv=1, sx=1.1)
-        body_v, body_i = _merge9(body, head, snout, ear_l, ear_r, tail)
-        hips = [(0.26, 0.6, 0.34), (-0.26, 0.6, 0.34), (0.26, 0.6, -0.36), (-0.26, 0.6, -0.36)]
-        legs = [_leg_part(0.075, 0.05, 0.6, T_FUR) for _ in range(4)]
+        chest = _sphere_part(1.0, 1.0, 0.0, 0.0, 0.0, T_FUR)
+        chest = (_xform9(chest[0], np.array([[0.29, 0, 0, 0], [0, 0.29, 0, 0.58], [0, 0, 0.40, 0.34]])), chest[1])
+        belly = _sphere_part(1.0, 1.0, 0.0, 0.0, 0.0, T_FUR)
+        belly = (_xform9(belly[0], np.array([[0.24, 0, 0, 0], [0, 0.25, 0, 0.50], [0, 0, 0.34, -0.26]])), belly[1])
+        neck = _tube(0.15, 0.11, 0.34, radial=6, rings=3, tile=T_FUR)
+        neck = (_xform9(neck[0], _mul3(_move(0.0, 0.58, 0.50), _rot_x(np.radians(38)))), neck[1])
+        head = _sphere_part(0.15, 1.0, 0.0, 0.0, 0.0, T_FUR, sx=0.9)
+        head = (_xform9(head[0], np.array([[1.0, 0, 0, 0], [0, 0.95, 0, 0.88], [0, 0, 1.1, 0.78]])), head[1])
+        snout = _tube(0.065, 0.030, 0.20, radial=6, rings=2, tile=T_FUR)
+        snout = (_xform9(snout[0], _mul3(_move(0.0, 0.84, 0.94), _rot_x(np.pi / 2.0 - 0.10))), snout[1])
+        nose = _sphere_part(0.045, 1.0, 0.0, 0.855, 1.12, T_BARK, subdiv=0)
+        ear_l = _tube(0.05, 0.004, 0.15, radial=5, rings=2, tile=T_FUR)
+        ear_l = (_xform9(ear_l[0], _mul3(_move(0.085, 0.94, 0.70), _rot_x(-0.18))), ear_l[1])
+        ear_r = _tube(0.05, 0.004, 0.15, radial=5, rings=2, tile=T_FUR)
+        ear_r = (_xform9(ear_r[0], _mul3(_move(-0.085, 0.94, 0.70), _rot_x(-0.18))), ear_r[1])
+        tail = _tube(0.065, 0.025, 0.40, radial=6, rings=3, bend=0.04, tile=T_FUR)
+        tail = (_xform9(tail[0], _mul3(_move(0.0, 0.60, -0.52), _rot_x(np.pi + 1.15))), tail[1])
+        body_v, body_i = _merge9(chest, belly, neck, head, snout, nose, ear_l, ear_r, tail)
+        hips = [(0.16, 0.56, 0.36), (-0.16, 0.56, 0.36), (0.14, 0.54, -0.28), (-0.14, 0.54, -0.28)]
+        legs = [_leg_part(0.055, 0.032, 0.56, T_FUR) for _ in range(4)]
         return body_v, body_i, hips, legs
     return _cached("wolf", build)
 
@@ -505,6 +514,30 @@ def fire_model(seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
             parts.append(stone)
         return _merge9(*parts)
     return _cached("fire", build)
+
+
+def _hand_item_set():
+    return _cached("hand", _build_hand_item)
+
+
+def _build_hand_item():
+    hand_p = _sphere_part(0.115, 1.1, 0.0, 0.0, 0.0, T_SAND, subdiv=1, amp=0.02, freq=4.0, seed=9)
+    axe_parts = [_tube(0.032, 0.024, 0.66, radial=6, rings=3, tile=T_BARK)]
+    blade = _sphere_part(0.11, 1.0, 0.0, 0.0, 0.0, T_ROCK, subdiv=1, amp=0.05, freq=3.0, seed=17)
+    axe_parts.append((_xform9(blade[0], np.array([[0.30, 0, 0, 0.085], [0, 0.62, 0, 0.58], [0, 0, 0.34, -0.02]])), blade[1]))
+    spear_parts = [_tube(0.028, 0.020, 1.15, radial=6, rings=3, tile=T_BARK)]
+    tip = _tube(0.055, 0.002, 0.17, radial=6, rings=2, tile=T_ROCK)
+    spear_parts.append((_xform9(tip[0], _move(0.0, 1.14, 0.0)), tip[1]))
+    food_parts = []
+    for k, (dx, dy, dz) in enumerate(((0.0, 0.0, 0.0), (0.07, 0.045, 0.03), (-0.06, 0.03, -0.04))):
+        food_parts.append(_sphere_part(0.055 + 0.012 * (k % 2), 1.0, dx, dy, dz,
+                                       T_RED, subdiv=1, amp=0.03, freq=5.0, seed=30 + k))
+    return {
+        "рука": _merge9(*[hand_p]),
+        "топор": _merge9(*axe_parts),
+        "копьё": _merge9(*spear_parts),
+        "еда": _merge9(*food_parts),
+    }
 
 
 def _rot_y_local(a: float) -> np.ndarray:
@@ -1163,6 +1196,7 @@ def do_attack(st: dict):
         return None
     slot = st.get("selected", 3)
     if slot == 2:
+        st["attack_cd"] = 0.5
         eat_food(st)
         return None
     wname, wdmg, wreach = selected_weapon(st)

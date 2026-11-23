@@ -13,6 +13,7 @@ from game_core import (
     ATLAS_COLS, ATLAS_ROWS, T_GRASS, T_ROCK, T_SAND, T_FLAME, T_RED, T_WATER,
     build_font_atlas, build_texture_atlas, atlas_tile_uv, text_width,
     build_terrain_chunk, build_prop_verts, wolf_model, boar_model, fire_model,
+    _hand_item_set,
     perspective, look_at, ortho_px, frustum_planes, sphere_in_frustum,
     model_rot_y, model_translate, model_rot_x, mat4_mul,
     can_craft, RECIPES, HELP_LINES, HOTBAR, CELL_W as CELL_ADV,
@@ -98,7 +99,8 @@ in vec3 v_splat;
 in vec2 v_uv;
 out vec4 out_color;
 void main() {
-    vec2 tuv = fract(v_uv) * u_tf;
+    vec2 texel = u_tf / 64.0;
+    vec2 tuv = clamp(fract(v_uv) * u_tf, texel * 0.5, u_tf - texel * 0.5);
     vec3 g = texture(u_atlas, tuv + u_off_grass).rgb;
     vec3 r = texture(u_atlas, tuv + u_off_rock).rgb;
     vec3 s = texture(u_atlas, tuv + u_off_sand).rgb;
@@ -151,7 +153,9 @@ out vec4 out_color;
 void main() {
     float tile = floor(v_tile + 0.5);
     vec2 off = vec2(mod(tile, 4.0), floor(tile / 4.0)) * u_tf;
-    vec4 tex = texture(u_atlas, fract(v_uv) * u_tf + off);
+    vec2 texel = u_tf / 64.0;
+    vec2 tuv = clamp(fract(v_uv) * u_tf, texel * 0.5, u_tf - texel * 0.5);
+    vec4 tex = texture(u_atlas, tuv + off);
     if (tex.a < 0.4) discard;
     float lam = max(dot(normalize(v_normal), normalize(u_sun_dir)), 0.0);
     vec3 col = tex.rgb * (u_amb + u_light * lam);
@@ -184,7 +188,9 @@ uniform vec3 u_mul;
 in vec2 v_uv;
 out vec4 out_color;
 void main() {
-    vec4 tex = texture(u_tex, fract(v_uv + u_scroll) * u_tf + u_off);
+    vec2 texel = u_tf / 64.0;
+    vec2 tuv = clamp(fract(v_uv + u_scroll) * u_tf, texel * 0.5, u_tf - texel * 0.5);
+    vec4 tex = texture(u_tex, tuv + u_off);
     if (tex.a < 0.05) discard;
     out_color = vec4(tex.rgb * u_mul, u_alpha * tex.a);
 }
@@ -274,6 +280,8 @@ class Renderer:
         self.fire_res = self._make_indexed(fire_model()[0], fire_model()[1], self.prop_prog)
         self.wolf_res = _animal_gpu_res(ctx, self.prop_prog, wolf_model())
         self.boar_res = _animal_gpu_res(ctx, self.prop_prog, boar_model())
+        self.hand_res = {k: self._make_indexed(v, i, self.prop_prog)
+                         for k, (v, i) in _hand_item_set().items()}
 
         self.hud_buf_solid = ctx.buffer(reserve=1024)
         self.hud_buf_text = ctx.buffer(reserve=1024)
@@ -383,6 +391,41 @@ class Renderer:
         ])
         del ax, az, bx, bz
 
+    _HAND_TILT = {"рука": 0.35, "топор": 0.45, "копьё": 1.10, "еда": 0.05}
+
+    def _hand_key(self, st: dict) -> tuple[str, float]:
+        slot = st.get("selected", 3)
+        if slot == 0 and st["tools"]["топор"]:
+            return "топор", 0.5
+        if slot == 1 and st["tools"]["копьё"]:
+            return "копьё", 0.6
+        if slot == 2:
+            return "еда", 0.5
+        return "рука", 0.45
+
+    def _draw_viewmodel(self, st: dict, eye, f, right, up):
+        prog = self.prop_prog
+        key, cd = self._hand_key(st)
+        t = st["time"]
+        acd = st.get("attack_cd", 0.0)
+        p = 1.0 - min(max(acd, 0.0), cd) / cd
+        swing = math.sin(min(p, 1.0) * math.pi) * 1.15 if acd > 0 else 0.0
+        bob = 0.02 * math.sin(t * 2.1) + 0.012 * math.sin(t * 3.7)
+        tilt = self._HAND_TILT[key] + swing
+        B = np.column_stack((right, up, f))
+        c, s = math.cos(tilt), math.sin(tilt)
+        rx = np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+        ct, stn = math.cos(0.30), math.sin(0.30)
+        rz = np.array([[ct, -stn, 0], [stn, ct, 0], [0, 0, 1]])
+        M = np.eye(4, dtype="f4")
+        M[0:3, 0:3] = B @ (rx @ rz)
+        off = np.array([0.34, -0.36 + bob - 0.10 * swing, 0.62])
+        M[0:3, 3] = eye + B @ off
+        self.ctx.clear(depth=1.0)
+        write_mat(prog, "u_model", M)
+        self.hand_res[key]["vao"].render(mgl.TRIANGLES)
+        write_mat(prog, "u_model", np.eye(4))
+
     def draw_world(self, st: dict, sun: dict):
         ctx = self.ctx
         eye = np.array([st["px"], st["py"], st["pz"]])
@@ -423,6 +466,17 @@ class Renderer:
         prog["u_fog_color"].value = fog_c
         prog["u_fog"].value = (FOG_NEAR, FOG_FAR)
 
+        pprog = self.prop_prog
+        write_mat(pprog, "u_pv", pv)
+        pprog["u_atlas"].value = 0
+        pprog["u_tf"].value = tf
+        pprog["u_sun_dir"].value = tuple(sun["sun_dir"])
+        pprog["u_light"].value = tuple(sun["light"])
+        pprog["u_amb"].value = sun["amb"]
+        pprog["u_cam"].value = (st["px"], st["py"], st["pz"])
+        pprog["u_fog_color"].value = fog_c
+        pprog["u_fog"].value = (FOG_NEAR, FOG_FAR)
+
         visible = []
         for key, (vao, _vbo, _ibo) in self.chunk_terrain.items():
             ccx, ccz = key[0] * CHUNK + CHUNK / 2, key[1] * CHUNK + CHUNK / 2
@@ -433,21 +487,11 @@ class Renderer:
                 continue
             visible.append(key)
             vao.render(mgl.TRIANGLES)
-        pprog = self.prop_prog
         for key in visible:
             vao = self.chunk_props.get(key, (None,))[0]
             if vao is not None:
                 vao.render(mgl.TRIANGLES)
 
-        write_mat(pprog, "u_pv", pv)
-        pprog["u_atlas"].value = 0
-        pprog["u_tf"].value = tf
-        pprog["u_sun_dir"].value = tuple(sun["sun_dir"])
-        pprog["u_light"].value = tuple(sun["light"])
-        pprog["u_amb"].value = sun["amb"]
-        pprog["u_cam"].value = (st["px"], st["py"], st["pz"])
-        pprog["u_fog_color"].value = fog_c
-        pprog["u_fog"].value = (FOG_NEAR, FOG_FAR)
         for fr in st["fires"]:
             if math.hypot(fr["x"] - st["px"], fr["z"] - st["pz"]) > FOG_FAR:
                 continue
@@ -503,6 +547,8 @@ class Renderer:
             fp["u_alpha"].value = 1.0
         ctx.depth_mask = True
         ctx.disable(mgl.BLEND)
+        if st["started"] and not st["dead"]:
+            self._draw_viewmodel(st, eye, f, right, up)
 
     def _build_water(self):
         xs = np.arange(0, WORLD + 1, 4.0)
@@ -669,6 +715,10 @@ class Renderer:
                   + ("ДЕНЬ" if sun["day"] else "НОЧЬ") + "  ДЕНЬ " + str(st["days"]),
                   (1, 1, 1, 0.92))
         self.text(16, 34, "FPS " + str(int(round(fps))), (1, 1, 1, 0.6))
+        kx = 16
+        for label, on in st.get("keys_ui", ()):
+            self.text(kx, 54, label, (0.4, 1, 0.4, 0.95) if on else (1, 1, 1, 0.22))
+            kx += text_width(label, 2) + 16
 
         cx, cy = self.w / 2, self.h / 2
         self.rect(cx - 9, cy - 1, 7, 2, (1, 1, 1, 0.85))

@@ -8,6 +8,7 @@
 Тест логики (без окна):  python game.py --selftest
 """
 import sys
+import traceback
 
 import game_core as gc
 from game_render import Renderer
@@ -89,7 +90,6 @@ def run() -> int:
         cur = {k: glfw.get_key(window, k) == glfw.PRESS for k in keys_list}
         edges = {k: cur[k] and not prev[k] for k in keys_list}
         lmb = glfw.get_mouse_button(window, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
-        lmb_edge = lmb and not prev["_lmb"]
         prev["_lmb"] = lmb
 
         mx, myv = glfw.get_cursor_pos(window)
@@ -146,38 +146,62 @@ def run() -> int:
                   float(cur[glfw.KEY_D]) - float(cur[glfw.KEY_A]))
             sprint = cur[glfw.KEY_LEFT_SHIFT]
             jump = cur[glfw.KEY_SPACE]
-            if edges[glfw.KEY_E]:
-                rebuilt = gc.do_interact(st)
-                if rebuilt is not None:
-                    renderer.rebuild_props_gpu(rebuilt, st["chunks"][rebuilt]["props"])
-            if edges[glfw.KEY_F]:
-                gc.eat_food(st)
-            if lmb_edge:
-                rebuilt = gc.do_attack(st)
-                if rebuilt is not None:
-                    renderer.rebuild_props_gpu(rebuilt, st["chunks"][rebuilt]["props"])
-            gc.update_player(st, dt, mv, sprint, jump)
-            gc.update_survival(st, dt)
-            gc.update_fires(st, dt)
-            gc.update_wolves(st, dt)
-            gc.update_boars(st, dt)
-            gc.update_time(st, dt)
-            st["attack_cd"] = max(0.0, st["attack_cd"] - dt)
+            try:
+                if edges[glfw.KEY_E]:
+                    rebuilt = gc.do_interact(st)
+                    if rebuilt is None:
+                        gc.message(st, "РЯДОМ НИЧЕГО НЕТ")
+                    else:
+                        renderer.rebuild_props_gpu(rebuilt, st["chunks"][rebuilt]["props"])
+                if lmb:
+                    rebuilt = gc.do_attack(st)
+                    if rebuilt is not None:
+                        renderer.rebuild_props_gpu(rebuilt, st["chunks"][rebuilt]["props"])
+                if edges[glfw.KEY_F]:
+                    gc.eat_food(st)
+            except Exception:
+                traceback.print_exc()
+                gc.message(st, "ОШИБКА - СМОТРИ КОНСОЛЬ")
+            try:
+                gc.update_player(st, dt, mv, sprint, jump)
+                gc.update_survival(st, dt)
+                gc.update_fires(st, dt)
+                gc.update_wolves(st, dt)
+                gc.update_boars(st, dt)
+                gc.update_time(st, dt)
+                st["attack_cd"] = max(0.0, st["attack_cd"] - dt)
+            except Exception:
+                traceback.print_exc()
+                gc.message(st, "ОШИБКА - СМОТРИ КОНСОЛЬ")
 
         if not st["started"]:
             st["time"] += dt
         st["messages"] = [(t, ttl - dt) for t, ttl in st["messages"] if ttl - dt > 0]
 
-        sun = gc.sun_state(st["time"])
-        renderer.draw_world(st, sun)
-        if st["py"] - gc.EYE < gc.WATER_LEVEL - 0.3:
-            renderer.rect(0, 0, renderer.w, renderer.h, (0.10, 0.30, 0.50, 0.35))
-        renderer.draw_hud(st, sun, fps_show)
-        if st["paused"] and not st["dead"]:
-            renderer.rect(0, 0, renderer.w, renderer.h, (0, 0, 0, 0.45))
-            renderer.centered(renderer.h / 2 - 16, "ПАУЗА", (1, 1, 1, 0.95), 4)
-            renderer.centered(renderer.h / 2 + 40, "ESC - ПРОДОЛЖИТЬ", (1, 1, 1, 0.8))
-        renderer.flush_hud()
+        st["keys_ui"] = [
+            ("W", cur[glfw.KEY_W]), ("A", cur[glfw.KEY_A]), ("S", cur[glfw.KEY_S]),
+            ("D", cur[glfw.KEY_D]), ("E", cur[glfw.KEY_E]), ("F", cur[glfw.KEY_F]),
+            ("C", cur[glfw.KEY_C]), ("TAB", cur[glfw.KEY_TAB]), ("1", cur[glfw.KEY_1]),
+            ("2", cur[glfw.KEY_2]), ("3", cur[glfw.KEY_3]), ("4", cur[glfw.KEY_4]),
+        ]
+        try:
+            sun = gc.sun_state(st["time"])
+            renderer.draw_world(st, sun)
+            if st["py"] - gc.EYE < gc.WATER_LEVEL - 0.3:
+                renderer.rect(0, 0, renderer.w, renderer.h, (0.10, 0.30, 0.50, 0.35))
+            renderer.draw_hud(st, sun, fps_show)
+            if st["paused"] and not st["dead"]:
+                renderer.rect(0, 0, renderer.w, renderer.h, (0, 0, 0, 0.45))
+                renderer.centered(renderer.h / 2 - 16, "ПАУЗА", (1, 1, 1, 0.95), 4)
+                renderer.centered(renderer.h / 2 + 40, "ESC - ПРОДОЛЖИТЬ", (1, 1, 1, 0.8))
+            renderer.flush_hud()
+        except Exception:
+            traceback.print_exc()
+            try:
+                renderer.centered(renderer.h / 2, "ОШИБКА РЕНДЕРА - СМОТРИ КОНСОЛЬ", (1, 0.4, 0.3, 1))
+                renderer.flush_hud()
+            except Exception:
+                pass
 
         fps_acc += dt
         fps_n += 1
