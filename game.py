@@ -174,8 +174,6 @@ def run() -> int:
                 traceback.print_exc()
                 gc.message(st, "ОШИБКА - СМОТРИ КОНСОЛЬ")
 
-        if not st["started"]:
-            st["time"] += dt
         st["messages"] = [(t, ttl - dt) for t, ttl in st["messages"] if ttl - dt > 0]
 
         st["keys_ui"] = [

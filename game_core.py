@@ -797,15 +797,15 @@ def sun_state(t: float) -> dict:
     sunset_k = float(np.clip(1.0 - abs(sy) * 5.0, 0.0, 1.0)) * (1.0 if sy > -0.35 else 0.0)
     sd = np.array([math.cos(ang) * 0.9, max(sy, -0.2), 0.35])
     sd /= np.linalg.norm(sd)
-    night_l = np.array([0.22, 0.26, 0.38])
+    night_l = np.array([0.30, 0.34, 0.46])
     day_l = np.array([1.0, 0.97, 0.88])
     sunset_l = np.array([1.0, 0.6, 0.34])
     light = night_l * (1 - day_k) + (day_l * (1 - sunset_k) + sunset_l * sunset_k) * day_k
-    night_s = np.array([0.016, 0.023, 0.05])
+    night_s = np.array([0.030, 0.045, 0.080])
     day_s = np.array([0.45, 0.66, 0.92])
     sunset_s = np.array([0.85, 0.5, 0.30])
     sky = night_s * (1 - day_k) + (day_s * (1 - sunset_k) + sunset_s * sunset_k) * day_k
-    amb = 0.14 + 0.30 * day_k
+    amb = 0.18 + 0.30 * day_k
     return {"t01": t01, "day": bool(sy > -0.02), "sun_dir": sd, "light": light,
             "sky": sky, "amb": amb, "hour": (t01 * 24.0 + 6.0) % 24.0}
 

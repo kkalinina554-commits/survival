@@ -434,7 +434,7 @@ class Renderer:
         planes = frustum_planes(pv)
         fog_c = tuple(np.clip(sun["sky"], 0, 1))
 
-        ctx.clear(*sun["sky"])
+        ctx.clear(*sun["sky"], depth=1.0)
         f, right, up = self._basis(st["yaw"], st["pitch"])
         self.sky_prog["u_fwd"].value = tuple(f)
         self.sky_prog["u_right"].value = tuple(right)
