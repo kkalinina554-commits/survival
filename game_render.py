@@ -421,9 +421,10 @@ class Renderer:
         M[0:3, 0:3] = B @ (rx @ rz)
         off = np.array([0.34, -0.36 + bob - 0.10 * swing, 0.62])
         M[0:3, 3] = eye + B @ off
-        self.ctx.clear(depth=1.0)
+        self.ctx.disable(mgl.DEPTH_TEST)
         write_mat(prog, "u_model", M)
         self.hand_res[key]["vao"].render(mgl.TRIANGLES)
+        self.ctx.enable(mgl.DEPTH_TEST)
         write_mat(prog, "u_model", np.eye(4))
 
     def draw_world(self, st: dict, sun: dict):
